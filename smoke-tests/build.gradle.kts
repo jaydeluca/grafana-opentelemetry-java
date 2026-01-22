@@ -1,0 +1,35 @@
+plugins {
+    id("java")
+}
+
+dependencies {
+    testImplementation(project(":custom"))
+    testImplementation("org.testcontainers:testcontainers:2.0.3")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.0")
+    testImplementation("com.google.protobuf:protobuf-java-util:4.33.4")
+    testImplementation("com.squareup.okhttp3:okhttp:5.3.2")
+    testImplementation("io.opentelemetry.proto:opentelemetry-proto:1.3.2-alpha")
+    testImplementation("io.opentelemetry:opentelemetry-api")
+    testImplementation("io.opentelemetry.semconv:opentelemetry-semconv")
+    testImplementation("ch.qos.logback:logback-classic:1.5.25")
+    testImplementation("org.awaitility:awaitility:4.3.0")
+}
+
+tasks.test {
+    onlyIf {
+        // always execute smoke tests when running in IntelliJ
+        // on the command line, don't run smoke tests, unless the SMOKE_TEST_JAVA_VERSION environment variable is set
+        System.getProperty("idea.active") != null || System.getenv("SMOKE_TEST_JAVA_VERSION") != null
+    }
+    useJUnitPlatform()
+
+    testLogging.showStandardStreams = true
+
+    val shadowTask = project(":agent").tasks.named("shadowJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar::class)
+    dependsOn(shadowTask)
+    inputs.files(layout.files(shadowTask))
+
+    doFirst {
+        jvmArgs("-Dio.opentelemetry.smoketest.agent.shadowJar.path=${shadowTask.get().archiveFile.get()}")
+    }
+}
